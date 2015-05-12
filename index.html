@@ -5,6 +5,7 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
+
 			body {
 				color: #808080;
 				font-family:Monospace;
@@ -23,7 +24,7 @@
 			}
 
 			#stopwatch {
-				position:relative;
+				display:block;
 				left:0;
 				font-size:20px;
 				top:50px;
@@ -32,6 +33,13 @@
 			#timewarp {
 				left:0;
 				top:100px;
+				display:block;
+			}
+
+			#volume {
+				left:0;
+				top:150px;
+				display:block;
 			}
 
 			a {
@@ -44,20 +52,30 @@
 				position:absolute;
 				left:10px;
 				top:50px;
+				display:block;
 			}
 
+			label
+			{
+				padding-top:20px;
+				pointer-events:none;
+			}
+		
 		</style>
 	</head>
 	<body>
 		<div id="controllers">
-			<div id="stopwatch"></div>
+			<label for="stopwatch">Stopwatch</label>
+			<div id="stopwatch"><span></span></div>
 
 			<label for="timewarp">Timewarp</label>
-			<input id="timewarp" type="range" min="0" max="1" step="500" />
+			<input id="timewarp" type="range" min="0" max="15000" step="10">
+
+			<label for="volume">Volume</label>
+			<input id="volume" type="range" min="0" max="1" step="0.1" value="0.3">
 		</div>
 		<div id="container"></div>
-		<div id="info"><a href="http://threejs.org" target="_blank">three.js</a> webgl - Pendulum Wave repro for Eric Elliott. (https://www.youtube.com/watch?v=YhMiuzyU1ag) - <a href='http://cau.li'>cau.li</a></div>
-
+<div id="info">PendulumsWaves repro for Eric Elliott. <a href="https://www.youtube.com/watch?v=YhMiuzyU1ag" target="_blank">Video Reference</a> - <a href="http://cau.li" target="_blank">cau.li</a> - <a href="https://github.com/cauli/PendulumWaves">Source</a></div>
 		<script src="js/three.min.js"></script>
 		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
@@ -69,15 +87,23 @@
 		<script src="javascript/ColorManager.js"></script>
 
 		<script>
-
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			// Detect if the audio context is supported.
+			window.AudioContext = (
+			  window.AudioContext ||
+			  window.webkitAudioContext ||
+			  null
+			);
+
+			if (!AudioContext) {
+			  throw new Error("AudioContext not supported!");
+			} 
 
 			$( document ).ready(function() {
 
 				$timewarp = $("#timewarp");
-
-
-				
+				$volume = $("#volume");
 
 				var colorManager = new ColorManager();
 
@@ -96,13 +122,13 @@
 
 				var timer;
 
-
+				var volume = 0.3;
 
 				/*****************************/
 				var ballRadius = 2;
 
 				var timeStepCounter = -1;
-				var N = 5500;
+				var N = 15000;
 
 
 				var g = 9.807; // Gravity on the planet of the simulation. Assuming earth.
@@ -110,10 +136,10 @@
 
 				var l = 31;    // Length of the rope
 				var iL = l;
-				var dL = 0.797; // Length of the rope deviation per ball.
+				var dL = 0.82; // Length of the rope deviation per ball.
 
-				var theta0 = Math.PI/5, v0 = 0, ti = 0, tf = 450, alpha = 160;
-				var ballCount = 15;
+				var theta0 = Math.PI/5, v0 = 0, ti = 0, tf = 1350, alpha = 200;
+				var ballCount = 16;
 
 				var balls = [];
 
@@ -133,7 +159,12 @@
 				$timewarp.attr('max',N);
 
 				$timewarp.on("change", function() {
-					timeStepCounter = $timewarp.val();
+					timeStepCounter = $(this).val();
+				});
+
+				$volume.on("change", function() {
+					volume = $(this).val();
+					console.log(volume);
 				});
 
 				$('input[type=range]').on('input', function () {
@@ -144,13 +175,20 @@
 				animate();
 
 
-
 				function playSound(freq, timeout)
 				{
 					var oscillator = context.createOscillator();
+					oscillator.type = "sine";
+
+					var gainN = context.createGain();
+					gainN.gain.value = volume;
+
 					oscillator.frequency.value = freq;
 
-					oscillator.connect(context.destination);
+					oscillator.connect(gainN);
+
+					//oscillator.connect(context.destination);
+					gainN.connect(context.destination);
 
 					oscillator.start(0);
 
@@ -221,7 +259,6 @@
 			        scene.add(ambientLight);
 
 					// shadow
-
 					var canvas = document.createElement( 'canvas' );
 					canvas.width = 128;
 					canvas.height = 128;
@@ -239,8 +276,6 @@
 
 					var shadowMaterial = new THREE.MeshBasicMaterial( { map: shadowTexture } );
 					var shadowGeo = new THREE.PlaneBufferGeometry( ballRadius*4, ballRadius*4, 1, 1 );
-
-					var faceIndices = [ 'a', 'b', 'c', 'd' ];
 
 					var color, f, f2, f3, p, n, vertexIndex,
 
@@ -437,7 +472,7 @@
 				    {
 				      	balls[i].group.children[0].material = new THREE.MeshLambertMaterial( { color: 0x900000 } );
 
-				    	playSound(balls[i].frequency, 10);
+				    	playSound(balls[i], balls[i].frequency, 10);
 
 				    	setTimeout(function () {
 				    		balls[i].group.children[0].material = balls[i].defaultMaterial;
@@ -460,6 +495,7 @@
 
 			});
 
+		
 			
 		</script>
 
