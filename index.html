@@ -4,64 +4,7 @@
 		<title>three.js webgl - geometry - vertex colors</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<style>
-
-			body {
-				color: #808080;
-				font-family:Monospace;
-				font-size:13px;
-				text-align:center;
-
-				background-color: #fff;
-				margin: 0px;
-				overflow: hidden;
-			}
-
-			#info {
-				position: absolute;
-				top: 0px; width: 100%;
-				padding: 5px;
-			}
-
-			#stopwatch {
-				display:block;
-				left:0;
-				font-size:20px;
-				top:50px;
-			}
-
-			#timewarp {
-				left:0;
-				top:100px;
-				display:block;
-			}
-
-			#volume {
-				left:0;
-				top:150px;
-				display:block;
-			}
-
-			a {
-
-				color: #0080ff;
-			}
-
-			#controllers
-			{
-				position:absolute;
-				left:10px;
-				top:50px;
-				display:block;
-			}
-
-			label
-			{
-				padding-top:20px;
-				pointer-events:none;
-			}
-		
-		</style>
+		<link href="css/style.css" rel="stylesheet" type="text/css">
 	</head>
 	<body>
 		<div id="controllers">
@@ -72,7 +15,8 @@
 			<input id="timewarp" type="range" min="0" max="15000" step="10">
 
 			<label for="volume">Volume</label>
-			<input id="volume" type="range" min="0" max="1" step="0.1" value="0.3">
+			<input id="volume" type="range" min="0" max="1" step="0.05" value="0.2">
+
 		</div>
 		<div id="container"></div>
 <div id="info">PendulumsWaves repro for Eric Elliott. <a href="https://www.youtube.com/watch?v=YhMiuzyU1ag" target="_blank">Video Reference</a> - <a href="http://cau.li" target="_blank">cau.li</a> - <a href="https://github.com/cauli/PendulumWaves">Source</a></div>
@@ -83,6 +27,8 @@
 
 		<script src="javascript/vendor/jquery/jquery.min.js"></script>
 
+
+		<script src="javascript/Ball.js"></script>
 		<script src="javascript/Stopwatch.js"></script>
 		<script src="javascript/ColorManager.js"></script>
 
@@ -101,13 +47,13 @@
 			} 
 
 			$( document ).ready(function() {
-
+		
 				$timewarp = $("#timewarp");
 				$volume = $("#volume");
 
 				var colorManager = new ColorManager();
 
-				var context = new AudioContext;
+				var audioContext = new AudioContext;
 
 				var container, stats;
 
@@ -115,14 +61,18 @@
 
 				var mesh, group, group1, group2, group3, light;
 
-				var mouseX = 0, mouseY = 0;
+				var mouseX = -300, mouseY = -400;
 
 				var windowHalfX = window.innerWidth / 2;
 				var windowHalfY = window.innerHeight / 2;
 
 				var timer;
 
-				var volume = 0.3;
+				window.volume = 0.2;
+
+				var MIN_ZOOM = -30000;
+				var MAX_ZOOM = 30000;
+
 
 				/*****************************/
 				var ballRadius = 2;
@@ -136,9 +86,9 @@
 
 				var l = 31;    // Length of the rope
 				var iL = l;
-				var dL = 0.82; // Length of the rope deviation per ball.
+				var dL = 0.83; // Length of the rope deviation per ball.
 
-				var theta0 = Math.PI/5, v0 = 0, ti = 0, tf = 1350, alpha = 200;
+				var theta0 = Math.PI/4, v0 = 0, ti = 0, tf = 1350, alpha = 200;
 				var ballCount = 16;
 
 				var balls = [];
@@ -148,7 +98,7 @@
 				var deltaX = 5;
 
 				// Sound
-				var initFreq = 150;
+				var initFreq = 700;
 				var deltaFreq = 70;
 				var currentDeltaFreq = 0;
 
@@ -163,8 +113,7 @@
 				});
 
 				$volume.on("change", function() {
-					volume = $(this).val();
-					console.log(volume);
+					window.volume = $(this).val();
 				});
 
 				$('input[type=range]').on('input', function () {
@@ -173,29 +122,6 @@
 
 				init();
 				animate();
-
-
-				function playSound(freq, timeout)
-				{
-					var oscillator = context.createOscillator();
-					oscillator.type = "sine";
-
-					var gainN = context.createGain();
-					gainN.gain.value = volume;
-
-					oscillator.frequency.value = freq;
-
-					oscillator.connect(gainN);
-
-					//oscillator.connect(context.destination);
-					gainN.connect(context.destination);
-
-					oscillator.start(0);
-
-					setTimeout(function() {
-						oscillator.stop(0);
-					}, timeout);
-				}
 
 				/* du/dt = f with f = [ u(2); -(g/l)*sin(u(1)) ] */
 				function integrator(g, l, alpha, m, theta0, v0, N, ti, tf) {
@@ -246,7 +172,9 @@
 					container = document.getElementById( 'container' );
 
 					camera = new THREE.PerspectiveCamera( 10, window.innerWidth / window.innerHeight, 1, 30000 );
-					camera.position.z = 1500;
+					camera.position.z = 600;
+					camera.position.y = 400;
+					camera.position.x = -300;
 
 					scene = new THREE.Scene();
 
@@ -275,12 +203,10 @@
 					shadowTexture.needsUpdate = true;
 
 					var shadowMaterial = new THREE.MeshBasicMaterial( { map: shadowTexture } );
-					var shadowGeo = new THREE.PlaneBufferGeometry( ballRadius*4, ballRadius*4, 1, 1 );
+					var shadowGeo = new THREE.PlaneBufferGeometry( ballRadius*3, ballRadius*3, 1, 1 );
 
 					var color, f, f2, f3, p, n, vertexIndex,
-
 						radius = ballRadius,
-
 						geometry  = new THREE.IcosahedronGeometry( radius, 1 );
 
 
@@ -306,7 +232,7 @@
 					];
 
 
-					for(var i = 0; i<ballCount; i++)
+					for(var i = 0; i < ballCount; i++)
 					{
 						var originLineGeometry = new THREE.Geometry();
 							originLineGeometry.vertices.push(
@@ -343,18 +269,19 @@
 
 						scene.add( group );
 
-						balls.push(
-						{	
-							ball:i,
+						var ballConfig = {	
+							audioContext:audioContext,
 							ropeLength:-l,
 							group: group,
 							line: line,
 							originLine: originLine,
 							shadow:shadow,
-							info:integrator(g, l, alpha, m, theta0, v0, N, ti, tf),
+							integration:integrator(g, l, alpha, m, theta0, v0, N, ti, tf),
 							frequency: initFreq + currentDeltaFreq,
 							defaultMaterial: group.children[0].material
-						});
+						};
+
+						balls.push( new Ball(ballConfig) );
 
 						l += dL;
 						currentDeltaFreq += deltaFreq;
@@ -374,6 +301,9 @@
 					container.appendChild( stats.domElement );
 
 					document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+					document.body.addEventListener( 'mousewheel', mousewheel, false );
+					document.body.addEventListener( 'DOMMouseScroll', mousewheel, false );
+
 					window.addEventListener( 'resize', onWindowResize, false );
 
 					var elem = document.getElementById("stopwatch");
@@ -381,6 +311,31 @@
 
 					// start the timer
 					timer.start();
+				}
+
+				function mousewheel ( e ) {
+				
+				     var d = ((typeof e.wheelDelta != "undefined")?(-e.wheelDelta):e.detail);
+				     d = 100 * ((d>0)?1:-1);    
+				     var cPos = camera.position;
+
+				     
+				     if (isNaN(cPos.x) || isNaN(cPos.y) || isNaN(cPos.y)) return;
+
+			        if (cPos.z < MIN_ZOOM){
+			           cPos.z = MIN_ZOOM;
+			           return ;
+			        }
+
+			        if (cPos.z > MAX_ZOOM){
+			        	cPos.z = MAX_ZOOM;
+			        	return;
+			        }
+	
+				   mb = d>0 ? 1.1 : 0.9;
+				   cPos.x = cPos.x * mb;
+				   cPos.y = cPos.y * mb;
+				   cPos.z = cPos.z * mb;
 				}
 
 				function onWindowResize() {
@@ -405,18 +360,17 @@
 				//
 
 				function animate() {
-
 					requestAnimationFrame( animate );
 
 					render();
 					stats.update();
-
 				}
 
 				function render() {
 
 				    timeStepCounter++;
-			        if(timeStepCounter >= N){
+
+			        if(timeStepCounter >= N) {
 			            timeStepCounter = 0;
 			            // reset the timer
 						timer.reset();
@@ -425,74 +379,17 @@
 					camera.position.x += ( mouseX - camera.position.x ) * 0.05;
 					camera.position.y += ( - mouseY - camera.position.y ) * 0.05;
 
-					camera.lookAt( scene.position );
-					//console.dir(thetas);
+					camera.lookAt( new THREE.Vector3(scene.position.x, scene.position.y, l) );
 
 					for(var i = 0; i<balls.length; i++)
 					{	
-						
-						movePendulum(balls[i].group, balls[i].info.thetas[timeStepCounter], i);
+						balls[i].move(timeStepCounter);
+
+						//movePendulum(balls[i].group, balls[i].integration.thetas[timeStepCounter], i);
 					}
 
-					//group1.translateZ( 10 );
-
 					renderer.render( scene, camera );
-
 				}
-
-				function movePendulum(object, theta, i)
-				{
-					   // The pendulum bob
-				    var pi = Math.PI;
-				    var x1 = 0, y1 = 0;
-				    var x2, y2;
-
-				    if(0 <= theta < pi/2){
-				            x2 = balls[i].ropeLength*Math.cos(pi/2-theta);
-				            y2 = balls[i].ropeLength*Math.sin(pi/2-theta);
-				    }
-				    else if(pi/2 <= theta < pi){
-				            x2 = balls[i].ropeLength*Math.cos(theta - pi/2);
-				            y2 = balls[i].ropeLength*Math.sin(theta - pi/2);
-				    }
-				    else if(-pi/2 <= theta < 0){
-				            x2 = balls[i].ropeLength*Math.cos(pi/2-Math.abs(theta));
-				            y2 = balls[i].ropeLength*Math.sin(pi/2-Math.abs(theta));
-				    }
-				    else if(-pi <= theta < -pi/2){
-				            x2 = balls[i].ropeLength*Math.cos(Math.abs(theta) - pi/2);
-				            y2 = balls[i].ropeLength*Math.sin(Math.abs(theta) - pi/2);
-				    }
-				    else{
-				        console.error("Invalid theta");
-				    }
-
-
-				    if(theta < 0.02 && theta > -0.02)
-				    {
-				      	balls[i].group.children[0].material = new THREE.MeshLambertMaterial( { color: 0x900000 } );
-
-				    	playSound(balls[i], balls[i].frequency, 10);
-
-				    	setTimeout(function () {
-				    		balls[i].group.children[0].material = balls[i].defaultMaterial;
-				    	}, 100);
-				    }
-
-				    object.position.x = x2;
-				    object.position.y = y2;
-
-				    if(balls[i].line.geometry.vertices.length > 1)
-				    {
-						balls[i].line.geometry.vertices.pop();
-				    }
-
-
-				    balls[i].line.geometry.vertices.push(new THREE.Vector3(x2,y2,0));
-				    balls[i].line.geometry.verticesNeedUpdate = true;
-				    balls[i].shadow.position.x = x2;
-				}
-
 			});
 
 		
